@@ -1,0 +1,51 @@
+#  DoomDB — Makefile para recrear el esquema completo
+#  Uso: make setup
+#       make views
+#       make queries
+#       make all
+
+DB   = Chocolate_Doom
+USER = postgres
+HOST = localhost
+PORT = 5432
+
+PSQL = psql -U $(USER) -h $(HOST) -p $(PORT) -d $(DB)
+
+
+all: setup views queries
+	@echo "✔ Base de datos $(DB) lista."
+
+# ── Paso 1: DDL + datos + vista materializada
+setup:
+	@echo ">>> Creando tablas, índices e insertando datos..."
+	$(PSQL) -f Chocolate_Doom.sql
+	@echo "✔ Tablas y datos cargados."
+
+# ── Paso 2: Vistas regulares 
+views:
+	@echo ">>> Creando vistas..."
+	$(PSQL) -f doomdb_views.sql
+	@echo "✔ Vistas creadas."
+
+# ── Paso 3: Queries analíticas 
+queries:
+	@echo ">>> Ejecutando queries analíticas..."
+	$(PSQL) -f doomdb_queries.sql
+	@echo "✔ Queries ejecutadas."
+
+# ── Refrescar vista materializada
+refresh:
+	@echo ">>> Refrescando mvw_hotspots..."
+	$(PSQL) -c "REFRESH MATERIALIZED VIEW mvw_hotspots;"
+	@echo "✔ Vista materializada actualizada."
+
+# ── Limpiar todos los datos (sin borrar tablas) ───────────────
+clean:
+	@echo ">>> Limpiando datos..."
+	$(PSQL) -c "TRUNCATE \"ResponseItem\",\"Response\",\"Item\",\"UXInstrument\",\"TelemetryEvent\",\"Game\",\"Sector\",\"Map\",\"Player\",\"User\" CASCADE;"
+	@echo "✔ Datos eliminados."
+
+# ── Eliminar y recrear todo
+reset: clean all
+
+.PHONY: all setup views queries refresh clean reset
